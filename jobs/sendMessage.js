@@ -17,21 +17,24 @@ if (parentPort) {
 //@desc IIFE
 ;(async (timeZone, schedule) => {
   console.log('Checking User Detail ========>')
-  //@desc collect new user data
+  //@desc collect user data
   connectDB()
   const users = await User.find({
     birthDay: moment().tz(moment.tz.guess()).startOf('day'),
   })
+  // console.log(users)
 
   //@desc if there are new data store to jobs
   if (users.length != 0) {
     const jobs = await Job.find({}).select({ user: 1, _id: 0 })
+
+    // issue
     const target = users.filter((user) => {
-      jobs.map((job) => {
-        return user._id.toString() !== job.user.toString()
-      })
+      const compareJob = jobs.map((job) => job.user.toString())
+      return user._id.toString() !== compareJob.toString()
     })
 
+    // console.log(target)
     //@desc set new jobs based on user birthday
     if (target || target.length != 0) {
       target.map(async (data) => {
@@ -45,6 +48,8 @@ if (parentPort) {
 
   //@desc fetch new update with populate user
   const updateJobs = await Job.find({ isActive: true }).populate('user')
+
+  console.log(updateJobs)
 
   //@desc run all promise
   await Promise.all(
@@ -68,6 +73,7 @@ if (parentPort) {
                 }
               )
 
+              console.log(response)
               //@desc if response success then update jobs
               if (response.status === 200) {
                 await Job.findOneAndUpdate(
