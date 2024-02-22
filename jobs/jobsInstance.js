@@ -5,7 +5,7 @@ const jobInstance = new Bree({
   jobs: [
     {
       name: 'sendMessage',
-      cron: '* * * * *',
+      cron: '0 9 * * *',
       worker: {
         workerData: {
           description: 'This job will send emails.',

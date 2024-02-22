@@ -17,30 +17,34 @@ if (parentPort) {
 //@desc IIFE
 ;(async (timeZone, schedule) => {
   console.log('Checking User Detail ========>')
+
   //@desc collect user data
   connectDB()
   const users = await User.find({
-    birthDay: moment().tz(moment.tz.guess()).startOf('day'),
-  })
-  // console.log(users)
+    birthDay: moment().tz(moment.tz.guess()).startOf('date'),
+  }).lean()
+  const usersIds = users.map((u) => u._id)
 
   //@desc if there are new data store to jobs
-  if (users.length != 0) {
-    const jobs = await Job.find({}).select({ user: 1, _id: 0 })
-
-    // issue
-    const target = users.filter((user) => {
-      const compareJob = jobs.map((job) => job.user.toString())
-      return user._id.toString() !== compareJob.toString()
+  if (users.length) {
+    const jobs = await Job.find({
+      user: { $in: usersIds },
     })
+      .select({ user: 1, _id: 0 })
+      .populate('user')
 
-    // console.log(target)
+    //@desc list user that not have job list
+    const compareJob = jobs.map((j) => j.user._id.toString())
+    const target = users.filter(
+      (user) => !compareJob.includes(user._id.toString())
+    )
+
     //@desc set new jobs based on user birthday
     if (target || target.length != 0) {
-      target.map(async (data) => {
+      target.map(async (user) => {
         await Job.create({
-          user: data._id,
-          message: `today is your day ${data.birthDay}`,
+          user: user._id,
+          message: `today is your day ${user.birthDay}`,
         })
       })
     }
@@ -48,8 +52,6 @@ if (parentPort) {
 
   //@desc fetch new update with populate user
   const updateJobs = await Job.find({ isActive: true }).populate('user')
-
-  console.log(updateJobs)
 
   //@desc run all promise
   await Promise.all(
@@ -73,9 +75,9 @@ if (parentPort) {
                 }
               )
 
-              console.log(response)
               //@desc if response success then update jobs
               if (response.status === 200) {
+                console.log('Schedule is success ========>')
                 await Job.findOneAndUpdate(
                   { _id: updateJob._id },
                   { isActive: false }
